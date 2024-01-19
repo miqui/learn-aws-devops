@@ -1,0 +1,21 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 12
+    commands:
+      - npm install -g newman
+  pre_build:
+    commands:
+      - echo Fetching secrets from AWS Secrets Manager
+      - |
+        secrets=$(aws secretsmanager get-secret-value --secret-id mySecretId --query SecretString --output text)
+        export POSTMAN_API_KEY=$(echo $secrets | jq -r .postmanApiKey)
+        export COLLECTION_UID=$(echo $secrets | jq -r .collectionUid)
+      - echo Fetching Postman Collection from Postman Cloud
+      - curl -X GET "https://api.getpostman.com/collections/$COLLECTION_UID" -H "X-Api-Key: $POSTMAN_API_KEY" -o my_collection.json
+  build:
+    commands:
+      - echo Running Postman tests
+      - newman run my_collection.json
